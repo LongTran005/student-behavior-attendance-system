@@ -18,7 +18,7 @@ class SmartClassroomApp(ctk.CTk):
         self.minsize(1024, 768)
         
         self.configure(fg_color=THEME_COLORS["bg_main"])
-        ctk.set_appearance_mode("dark")
+        ctk.set_appearance_mode("light")
         
         try:
             self.state("zoomed")
