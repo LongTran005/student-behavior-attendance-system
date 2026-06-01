@@ -1,41 +1,41 @@
 # gui/theme.py
 
 THEME_COLORS = {
-    # 1. Backgrounds (Tạo chiều sâu từ ngoài vào trong)
-    "bg_main": "#0F172A",   
-    "bg_sidebar": "#0B1120",   
-    "bg_card": "#1E293B",       
-    "bg_card_hover": "#334155", 
-    "bg_input": "#0B1120",    
-    "bg_dark": "#020617",     
-    "black": "#000000",        
+    # 1. Backgrounds (Phong cách phần mềm quản lý giáo dục)
+    "bg_main": "#F8FAFC",       # Nền tổng thể xám siêu nhạt
+    "bg_sidebar": "#FFFFFF",    # Thanh bên màu trắng tinh
+    "bg_card": "#FFFFFF",       # Nền thẻ (Card) trắng
+    "bg_card_hover": "#F1F5F9", # Xám nhạt khi di chuột
+    "bg_input": "#F1F5F9",      # Nền ô cuộn / nhập liệu
+    "bg_dark": "#E2E8F0",       # Thành phần tối / vạch ngăn cách
+    "black": "#0F172A",         
     
     # 2. Borders (Viền)
-    "border": "#334155",       
-    "border_dashed": "#475569", 
+    "border": "#E2E8F0",       
+    "border_dashed": "#CBD5E1", 
     
     # 3. Typography (Chữ)
-    "text_main": "#F8FAFC",    
-    "text_muted": "#94A3B8",  
-    "text_title": "#38BDF8",    
+    "text_main": "#1E293B",     # Chữ chính màu xám đen (dễ đọc)
+    "text_muted": "#64748B",    # Chữ phụ màu xám nhạt
+    "text_title": "#0F172A",    # Tiêu đề đen đậm
     
-    # 4. Brand & Actions (Nút bấm, tương tác)
-    "primary": "#3B82F6",       
-    "primary_hover": "#2563EB", 
-    "primary_light": "#93C5FD", 
+    # 4. Brand & Actions (Màu nhấn - Xanh dương chuẩn mực)
+    "primary": "#2563EB",       
+    "primary_hover": "#1D4ED8", 
+    "primary_light": "#DBEAFE", 
     
     # 5. Semantic / Status (Trạng thái)
-    "success_bg": "#064E3B",   
-    "success_text": "#34D399",  
-    "warning": "#F59E0B",      
-    "danger": "#EF4444",        
+    "success_bg": "#D1FAE5",   
+    "success_text": "#059669",  # Xanh lá chuẩn
+    "warning": "#D97706",       # Cam cảnh báo
+    "danger": "#DC2626",        # Đỏ lỗi/vắng
     
-    # 6. Specific Components
-    "record_bg": "#450A0A",     
-    "ai_active_bg": "#1E3A8A",  
-    "btn_pdf_bg": "#7F1D1D",   
-    "btn_pdf_border": "#991B1B",
-    "btn_pdf_hover": "#B91C1C"
+    # 6. Specific Components (Giữ nguyên các key để không gãy code)
+    "record_bg": "#FEE2E2",     
+    "ai_active_bg": "#E0E7FF",  
+    "btn_pdf_bg": "#DC2626",   
+    "btn_pdf_border": "#B91C1C",
+    "btn_pdf_hover": "#991B1B"
 }
 
 FONT_FAMILY = "Segoe UI"
