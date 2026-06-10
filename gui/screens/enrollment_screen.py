@@ -85,8 +85,8 @@ class EnrollmentScreen(ctk.CTkFrame):
                 placeholder_text=placeholder, 
                 fg_color=THEME_COLORS["bg_input"], 
                 border_color=THEME_COLORS["border"], 
-                text_color=THEME_COLORS["text_main"], # Fix lỗi: Chữ nhập vào trắng sáng rõ ràng
-                placeholder_text_color=THEME_COLORS["text_muted"], # Fix lỗi: Chữ gợi ý mờ tinh tế
+                text_color=THEME_COLORS["text_main"],
+                placeholder_text_color=THEME_COLORS["text_muted"],
                 height=45, 
                 font=(FONT_FAMILY, 14)
             )
@@ -174,4 +174,4 @@ class EnrollmentScreen(ctk.CTkFrame):
         
         self.cloud_icon.configure(image=None, text=TEXT_ICONS["upload_cloud"])
         self.upload_text_main.configure(text="Kéo thả ảnh vào đây")
-        self.upload_text_sub.configure(text="hoặc nhấp để duyệt tìm")   
+        self.upload_text_sub.configure(text="hoặc nhấp để duyệt tìm")

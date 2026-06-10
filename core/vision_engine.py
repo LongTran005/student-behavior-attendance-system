@@ -85,7 +85,27 @@ class VisionEngine:
         # 4. Khởi chạy luồng xử lý video real-time và kiểm soát ghi nhận điểm danh
         self.is_running = True
         self.session_attendance = {}
-        cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+        
+        # Thử mở camera: index 0 (mặc định) → index 1 → không dùng DSHOW
+        cap = None
+        for cam_index in [0, 1]:
+            cap = cv2.VideoCapture(cam_index, cv2.CAP_DSHOW)
+            if cap.isOpened():
+                log_callback(f"[HỆ THỐNG] Đã kết nối camera thành công (index={cam_index}, backend=DSHOW)")
+                break
+            cap.release()
+            # Thử lại không dùng DSHOW
+            cap = cv2.VideoCapture(cam_index)
+            if cap.isOpened():
+                log_callback(f"[HỆ THỐNG] Đã kết nối camera thành công (index={cam_index}, backend=AUTO)")
+                break
+            cap.release()
+            cap = None
+        
+        if cap is None or not cap.isOpened():
+            log_callback("[LỖI] Không thể mở camera! Kiểm tra kết nối phần cứng.")
+            self.is_running = False
+            return
         
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
