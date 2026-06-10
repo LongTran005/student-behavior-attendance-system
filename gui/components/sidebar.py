@@ -97,9 +97,6 @@ class Sidebar(ctk.CTkFrame):
 
     def handle_click(self, screen_id):
         """Xử lý sự kiện khi click vào một mục menu"""
-        if self.current_active == screen_id:
-            return
-
         self.set_active(screen_id)
         self.on_menu_select(screen_id)
 

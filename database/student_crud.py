@@ -84,3 +84,21 @@ class StudentRepository(BaseRepository):
             return cursor.fetchall()
         finally:
             conn.close()
+
+    def get_students_by_classroom(self, classroom_id):
+        """Lấy danh sách sinh viên thuộc một lớp cụ thể"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """
+                SELECT student_id, full_name, avatar_path
+                FROM Student
+                WHERE classroom_id = ?
+                ORDER BY student_id ASC
+                """,
+                (classroom_id,),
+            )
+            return cursor.fetchall()
+        finally:
+            conn.close()

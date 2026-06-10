@@ -69,26 +69,23 @@ class SmartClassroomApp(ctk.CTk):
             if not self._can_access_screen(screen_id):
                 screen_id = "account"
 
-            if self.current_screen:
-                self.current_screen.pack_forget()
-            if hasattr(self, "sidebar"):
-                self.sidebar.set_active(screen_id)
-            if screen_id == "lecture_lobby":
-                if hasattr(self.screens["lecture_lobby"], "refresh_and_load_data"):
-                    self.screens["lecture_lobby"].refresh_and_load_data()
-            elif screen_id == "lecture":
-                if hasattr(self.screens["lecture"], "refresh_and_load_data"):
-                    self.screens["lecture"].refresh_and_load_data()
-            elif screen_id == "session":
-                if hasattr(self.screens["session"], "refresh_and_load_data"):
-                    self.screens["session"].refresh_and_load_data()
-                    
             target_screen = self.screens.get(screen_id)
             if target_screen:
+                if self.current_screen and self.current_screen is not target_screen:
+                    self.current_screen.pack_forget()
+
+                if hasattr(self, "sidebar"):
+                    self.sidebar.set_active(screen_id)
+
                 if hasattr(target_screen, "set_current_user"):
                     target_screen.set_current_user(self.current_user)
                 target_screen.pack(fill="both", expand=True)
                 self.current_screen = target_screen
+
+                if hasattr(target_screen, "refresh_and_load_data"):
+                    target_screen.refresh_and_load_data()
+                elif hasattr(target_screen, "load_data_from_db"):
+                    target_screen.load_data_from_db()
             else:
                 print(f"[Warning] Không tìm thấy màn hình với ID: {screen_id}")
 

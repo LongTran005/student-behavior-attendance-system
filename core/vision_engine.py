@@ -13,10 +13,9 @@ from core.face_engine import FaceRecognizer
 
 class VisionEngine:
     def __init__(self):
-        # 1. Khởi tạo cơ sở dữ liệu và nạp mô hình AI
+        # 1. Khởi tạo cơ sở dữ liệu (KHÔNG nạp model AI ở đây để tránh block UI)
         self.db = DatabaseHelper()
-        self.model_yolo = YOLO("yolo26n-pose.pt")
-        self.model_yolo.to("cuda")
+        self.model_yolo = None  # Lazy-load khi bắt đầu stream
         self.is_running = False
         self.session_attendance = {}
         self.known_students = []
@@ -27,6 +26,14 @@ class VisionEngine:
         self.pose_analyzer = PoseAnalyzer()
         
         self.load_known_embeddings()
+
+    def _ensure_model_loaded(self):
+        """Lazy-load model YOLO chỉ khi cần (tránh block tkinter main thread lúc startup)"""
+        if self.model_yolo is None:
+            print("[HỆ THỐNG] Đang nạp mô hình YOLO-Pose...")
+            self.model_yolo = YOLO("yolo26n-pose.pt")
+            self.model_yolo.to("cuda")
+            print("[HỆ THỐNG] Nạp mô hình YOLO-Pose thành công!")
 
     def load_known_embeddings(self):
         # 2. Tải danh sách vector khuôn mặt sinh viên từ DB lên RAM
@@ -110,6 +117,9 @@ class VisionEngine:
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
+        # Lazy-load model YOLO trên luồng phụ (không block UI)
+        self._ensure_model_loaded()
+        
         log_callback("[HỆ THỐNG] Bắt đầu phiên điểm danh realtime...")
         start_time = time.time()
         self.last_deepface_time = 0
@@ -216,4 +226,4 @@ class VisionEngine:
             time.sleep(0.01)
 
         cap.release()
-        session_end_callback()
+        session_end_callback()

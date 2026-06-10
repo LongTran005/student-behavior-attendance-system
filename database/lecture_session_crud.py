@@ -83,7 +83,7 @@ class LectureSessionRepository(BaseRepository):
         try:
             cursor.execute(
                 """
-                SELECT session_id, course_name, lecture_date, start_time, end_time, status
+                SELECT session_id, course_name, classroom_id, lecture_date, start_time, end_time, status
                 FROM LectureSession
                 WHERE status = 'scheduled'
                 ORDER BY lecture_date ASC, start_time ASC
@@ -113,7 +113,7 @@ class LectureSessionRepository(BaseRepository):
         try:
             cursor.execute(
                 """
-                SELECT session_id, course_name, lecture_date, start_time, end_time, status
+                SELECT session_id, course_name, classroom_id, lecture_date, start_time, end_time, status
                 FROM LectureSession
                 WHERE status = ?
                 ORDER BY session_id DESC

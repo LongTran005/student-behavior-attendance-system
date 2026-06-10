@@ -2,7 +2,7 @@
 import customtkinter as ctk
 import os
 from tkinter import filedialog  
-from PIL import Image           
+from PIL import Image, ImageTk           
 from gui.theme import THEME_COLORS, FONT_FAMILY
 from gui.constants import TEXT_ICONS 
 from gui.controllers.enrollment_controller import EnrollmentController
@@ -13,6 +13,8 @@ class EnrollmentScreen(ctk.CTkFrame):
         # Khởi tạo bộ điều phối và biến lưu đường dẫn ảnh
         self.controller = EnrollmentController()
         self.selected_image_path = None
+        self._preview_image = None
+        self.preview_label = None
         self.init_ui()
 
     def init_ui(self):
@@ -135,18 +137,19 @@ class EnrollmentScreen(ctk.CTkFrame):
         if file_path:
             self.selected_image_path = file_path
             try:
-                pil_img = Image.open(file_path)
-                
-                # Tính tỷ lệ scale ảnh tự động theo chiều cao khung box
-                w, h = pil_img.size
-                aspect_ratio = w / h
-                new_h = 130
-                new_w = int(new_h * aspect_ratio)
-                
-                ctk_img = ctk.CTkImage(light_image=pil_img, size=(new_w, new_h))
-                
-                # Cấu hình lại Label: Thay thế icon bằng ảnh preview
-                self.cloud_icon.configure(image=ctk_img, text="")
+                with Image.open(file_path) as pil_img:
+                    preview_img = pil_img.copy()
+
+                preview_img.thumbnail((190, 130), Image.LANCZOS)
+                preview_tk_image = ImageTk.PhotoImage(preview_img, master=self.winfo_toplevel())
+
+                if self.preview_label is not None:
+                    self.preview_label.destroy()
+
+                self.cloud_icon.place_forget()
+                self.preview_label = ctk.CTkLabel(self.upload_box, image=preview_tk_image, text="")
+                self.preview_label.place(relx=0.5, rely=0.35, anchor="center")
+                self._preview_image = preview_tk_image
                 self.upload_text_main.configure(text=os.path.basename(file_path))
                 self.upload_text_sub.configure(text="Ảnh đã được chọn thành công")
             except Exception as e:
@@ -172,6 +175,11 @@ class EnrollmentScreen(ctk.CTkFrame):
             
         self.selected_image_path = None
         
-        self.cloud_icon.configure(image=None, text=TEXT_ICONS["upload_cloud"])
+        if self.preview_label is not None:
+            self.preview_label.destroy()
+            self.preview_label = None
+
+        self._preview_image = None  # Giải phóng reference ảnh cũ
+        self.cloud_icon.place(relx=0.5, rely=0.35, anchor="center")
         self.upload_text_main.configure(text="Kéo thả ảnh vào đây")
         self.upload_text_sub.configure(text="hoặc nhấp để duyệt tìm")

@@ -237,6 +237,7 @@ class TeacherManagementScreen(ctk.CTkFrame):
         dialog.configure(fg_color=THEME_COLORS["bg_main"])
         dialog.attributes("-topmost", True)
         dialog.grab_set()
+        dialog.protocol("WM_DELETE_WINDOW", lambda: self._close_teacher_dialog(dialog))
 
         card = CustomCard(dialog)
         card.pack(fill="both", expand=True, padx=20, pady=20)
@@ -276,7 +277,7 @@ class TeacherManagementScreen(ctk.CTkFrame):
             fg_color=THEME_COLORS["bg_dark"],
             text_color=THEME_COLORS["text_main"],
             hover_color=THEME_COLORS["bg_card_hover"],
-            command=dialog.destroy,
+            command=lambda: self._close_teacher_dialog(dialog),
         ).pack(side="right", padx=(8, 0))
 
         ctk.CTkButton(
@@ -335,8 +336,16 @@ class TeacherManagementScreen(ctk.CTkFrame):
             return
 
         messagebox.showinfo("Thành công", result["message"], parent=dialog)
-        dialog.destroy()
+        self._close_teacher_dialog(dialog)
         self.refresh_data()
+
+    @staticmethod
+    def _close_teacher_dialog(dialog):
+        try:
+            dialog.grab_release()
+        except Exception:
+            pass
+        dialog.destroy()
 
     def handle_toggle_status(self, teacher, is_active):
         result = self.controller.set_teacher_active(self.current_user, teacher["user_id"], is_active)
