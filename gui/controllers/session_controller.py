@@ -5,7 +5,31 @@ class SessionController:
     def __init__(self):
         self.db = DatabaseHelper()
 
-    def save_lecture_session(self, course_name, lecture_date, start_time, end_time):
+    def load_classrooms(self):
+        try:
+            return [
+                {
+                    "classroom_id": row["classroom_id"],
+                    "class_code": row["class_code"],
+                    "class_name": row["class_name"],
+                    "department": row["department"],
+                    "academic_year": row["academic_year"],
+                }
+                for row in self.db.get_all_classrooms()
+            ]
+        except Exception as e:
+            print(f"Lỗi load_classrooms: {e}")
+            return []
+
+    def save_lecture_session(
+        self,
+        course_name,
+        lecture_date,
+        start_time,
+        end_time,
+        classroom_id=None,
+        created_by=None,
+    ):
         course_name = course_name.strip()
         lecture_date = lecture_date.strip()
         start_time = start_time.strip()
@@ -14,7 +38,15 @@ class SessionController:
         if not (course_name and lecture_date and start_time and end_time):
             return {"status": "error", "message": "Vui lòng nhập đầy đủ tất cả các trường thông tin!"}
 
+        if not classroom_id:
+            return {"status": "error", "message": "Vui lòng chọn lớp học cho phiên học!"}
+
         try:
+            try:
+                classroom_id = int(classroom_id)
+            except (TypeError, ValueError):
+                return {"status": "error", "message": "Lớp học được chọn không hợp lệ!"}
+
             # 1. Kiểm tra định dạng ngày dữ liệu đầu vào
             try:
                 parsed_date = datetime.strptime(lecture_date, "%d/%m/%Y")
@@ -44,7 +76,7 @@ class SessionController:
 
             # 4. Kiểm tra chống chồng chéo lịch học & Khoảng cách an toàn tối thiểu 5 phút
             # Lấy các bài giảng hiện có cùng ngày trong DB (loại trừ các bài đã completed)
-            existing_lectures = self.db.get_lectures_by_date(db_ready_date)
+            existing_lectures = self.db.get_lectures_by_date(db_ready_date, classroom_id=classroom_id)
 
             for row in existing_lectures:
                 db_start_str = row["start_time"]
@@ -70,7 +102,9 @@ class SessionController:
                 course_name=course_name,
                 lecture_date=db_ready_date, 
                 start_time=start_time,
-                end_time=end_time
+                end_time=end_time,
+                classroom_id=classroom_id,
+                created_by=created_by,
             )
             
             return {

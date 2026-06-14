@@ -20,3 +20,10 @@ numpy>=1.24.0,<2.0.0
 opencv-python==4.13.0
 onnxruntime-gpu>=1.16.0
 typing-extensions>=4.8.0
+customtkinter
+Pillow
+deepface>=0.0.92
+tensorflow==2.20.0
+tf-keras==2.20.0
+protobuf>=5.26.1,<6.0.0dev
+bcrypt

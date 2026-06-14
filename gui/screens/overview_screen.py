@@ -36,27 +36,78 @@ class OverviewScreen(ctk.CTkFrame):
         # Khu vực Dữ liệu phía dưới 
         bottom_frame = ctk.CTkFrame(self, fg_color="transparent")
         bottom_frame.pack(fill="both", expand=True, padx=30, pady=(10, 20))
+        bottom_frame.grid_rowconfigure(0, weight=1)
         bottom_frame.grid_columnconfigure(0, weight=5, uniform="bottom_layout")
         bottom_frame.grid_columnconfigure(1, weight=5, uniform="bottom_layout")
 
         # --- CỘT TRÁI: DANH SÁCH SINH VIÊN TRONG CƠ SỞ DỮ LIỆU ---
         left_panel = CustomCard(bottom_frame)
         left_panel.grid(row=0, column=0, padx=10, sticky="nsew")
-        ctk.CTkLabel(left_panel, text="👥 DANH SÁCH SINH VIÊN TRONG DB", font=(FONT_FAMILY, 14, "bold"), text_color=THEME_COLORS["text_title"]).pack(anchor="w", padx=20, pady=15)
+        ctk.CTkLabel(left_panel, text="DANH SÁCH SINH VIÊN TRONG DB", font=(FONT_FAMILY, 14, "bold"), text_color=THEME_COLORS["text_title"]).pack(anchor="w", padx=20, pady=15)
         
         # Khung cuộn chứa sinh viên
-        self.sv_scroll_frame = ctk.CTkScrollableFrame(left_panel, fg_color=THEME_COLORS["bg_input"], corner_radius=8, label_text="Mã SV         |   Họ và Tên                                 |  Lớp")
-        self.sv_scroll_frame._label.configure(font=(FONT_FAMILY, 12, "bold"), text_color=THEME_COLORS["text_muted"])
+        self.sv_scroll_frame = ctk.CTkScrollableFrame(left_panel, fg_color=THEME_COLORS["bg_input"], corner_radius=8)
         self.sv_scroll_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
 
         # --- CỘT PHẢI: LỊCH SỬ BUỔI HỌC ĐÃ DIỄN RA ---
         right_panel = CustomCard(bottom_frame)
         right_panel.grid(row=0, column=1, padx=10, sticky="nsew")
-        ctk.CTkLabel(right_panel, text="📅 LỊCH SỬ BUỔI HỌC ĐÃ DIỄN RA", font=(FONT_FAMILY, 14, "bold"), text_color=THEME_COLORS["text_title"]).pack(anchor="w", padx=20, pady=15)
+        ctk.CTkLabel(right_panel, text="LỊCH SỬ BUỔI HỌC ĐÃ DIỄN RA", font=(FONT_FAMILY, 14, "bold"), text_color=THEME_COLORS["text_title"]).pack(anchor="w", padx=20, pady=15)
         
         # Khung cuộn chứa danh sách các buổi học
         self.session_scroll_frame = ctk.CTkScrollableFrame(right_panel, fg_color=THEME_COLORS["bg_input"], corner_radius=8)
         self.session_scroll_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+
+    def _build_table_header(self, parent, columns):
+        header = ctk.CTkFrame(parent, fg_color="transparent")
+        header.pack(fill="x", pady=(6, 8), padx=5)
+        for index, (title, width, weight) in enumerate(columns):
+            header.grid_columnconfigure(index, minsize=width, weight=weight)
+            ctk.CTkLabel(
+                header,
+                text=title,
+                font=(FONT_FAMILY, 12, "bold"),
+                text_color=THEME_COLORS["text_muted"],
+                anchor="w",
+            ).grid(row=0, column=index, sticky="ew", padx=(0, 10))
+
+    def _add_student_row(self, student_id, name, class_name):
+        row = ctk.CTkFrame(self.sv_scroll_frame, fg_color="transparent")
+        row.pack(fill="x", pady=4, padx=5)
+        row.grid_columnconfigure(0, minsize=90, weight=0)
+        row.grid_columnconfigure(1, minsize=190, weight=1)
+        row.grid_columnconfigure(2, minsize=90, weight=0)
+
+        ctk.CTkLabel(row, text=str(student_id), font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_main"], anchor="w").grid(row=0, column=0, sticky="ew", padx=(0, 10))
+        ctk.CTkLabel(row, text=str(name), font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_main"], anchor="w").grid(row=0, column=1, sticky="ew", padx=(0, 10))
+        ctk.CTkLabel(row, text=str(class_name), font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_muted"], anchor="w").grid(row=0, column=2, sticky="ew")
+
+    def _add_session_row(self, session_id, title, date, time_range):
+        row = ctk.CTkFrame(
+            self.session_scroll_frame,
+            fg_color="transparent",
+            height=40,
+            corner_radius=6,
+        )
+        row.pack(fill="x", pady=4, padx=5)
+        row.pack_propagate(False)
+        row.grid_columnconfigure(0, minsize=210, weight=1)
+        row.grid_columnconfigure(1, minsize=95, weight=0)
+        row.grid_columnconfigure(2, minsize=120, weight=0)
+
+        widgets = [
+            ctk.CTkLabel(row, text=str(title), font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_main"], anchor="w"),
+            ctk.CTkLabel(row, text=str(date), font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_muted"], anchor="w"),
+            ctk.CTkLabel(row, text=str(time_range), font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_muted"], anchor="w"),
+        ]
+        widgets[0].grid(row=0, column=0, sticky="ew", padx=(8, 10), pady=8)
+        widgets[1].grid(row=0, column=1, sticky="ew", padx=(0, 10), pady=8)
+        widgets[2].grid(row=0, column=2, sticky="ew", pady=8)
+
+        command = lambda _event: self.show_session_details(session_id, title, date)
+        row.bind("<Button-1>", command)
+        for widget in widgets:
+            widget.bind("<Button-1>", command)
 
     def setup_stats_cards_ui(self):
         """Khởi tạo cấu trúc giao diện tĩnh cho các Thẻ Thống Kê"""
@@ -80,6 +131,11 @@ class OverviewScreen(ctk.CTkFrame):
     
     def load_data_from_db(self):
         """Tải dữ liệu từ Controller và hiển thị lên UI"""
+        for widget in self.sv_scroll_frame.winfo_children():
+            widget.destroy()
+        for widget in self.session_scroll_frame.winfo_children():
+            widget.destroy()
+
         # 1. Tải dữ liệu vào các thẻ thông kê
         stats = self.controller.get_stats_data()
         self.lbl_total_sv.configure(text=stats["total"])
@@ -88,32 +144,25 @@ class OverviewScreen(ctk.CTkFrame):
         self.lbl_ai_alerts.configure(text=stats["alerts"])
 
         # 2. Tải dữ liệu danh sách Sinh viên
+        self._build_table_header(
+            self.sv_scroll_frame,
+            [("Mã SV", 90, 0), ("Họ và tên", 190, 1), ("Lớp", 90, 0)]
+        )
         students = self.controller.load_all_students()
         for mssv, name, class_name in students:
-            item_frame = ctk.CTkFrame(self.sv_scroll_frame, fg_color="transparent")
-            item_frame.pack(fill="x", pady=4)
-            
-            ctk.CTkLabel(item_frame, text=f"{mssv}", font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_main"], width=80, anchor="w").pack(side="left", padx=5)
-            ctk.CTkLabel(item_frame, text=f"|  {name}", font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_main"], width=200, anchor="w").pack(side="left")
-            ctk.CTkLabel(item_frame, text=f"|  {class_name}", font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_muted"]).pack(side="left", padx=10)
+            self._add_student_row(mssv, name, class_name)
 
         # 3. Tải dữ liệu danh sách Buổi học
+        self._build_table_header(
+            self.session_scroll_frame,
+            [("Bài giảng", 210, 1), ("Ngày", 95, 0), ("Thời gian", 120, 0)]
+        )
         sessions = self.controller.load_all_sessions()
         for s_id, title, date, room in sessions:
-            btn_session = ctk.CTkButton(
-                self.session_scroll_frame, 
-                text=f"{title:<35} |  {date}  |  {room}",
-                font=(FONT_FAMILY, 13),
-                anchor="w",
-                fg_color="transparent",
-                text_color=THEME_COLORS["text_main"],
-                hover_color=THEME_COLORS["bg_card_hover"],
-                height=40,
-                corner_radius=6,
-                # Truyền s_id thực tế từ DB vào hàm xử lý sự kiện click
-                command=lambda sid=s_id, title_str=title, date_str=date: self.show_session_details(sid, title_str, date_str)
-            )
-            btn_session.pack(fill="x", pady=4, padx=5)
+            self._add_session_row(s_id, title, date, room)
+
+    def refresh_and_load_data(self):
+        self.load_data_from_db()
 
     def show_session_details(self, session_id, session_title, session_date):
         """Mở cửa sổ hiển thị chi tiết điểm danh từ database dựa vào session_id"""
@@ -126,16 +175,19 @@ class OverviewScreen(ctk.CTkFrame):
         # Khung thông tin buổi học
         info_frame = CustomCard(detail_window)
         info_frame.pack(fill="x", padx=20, pady=15)
-        ctk.CTkLabel(info_frame, text=f"📘 Môn Học: Trí Tuệ Nhân Tạo (Thực Hành)", font=(FONT_FAMILY, 16, "bold"), text_color=THEME_COLORS["text_title"]).pack(anchor="w", padx=20, pady=(15, 5))
-        ctk.CTkLabel(info_frame, text=f"⏱️ Thời gian: {session_date}  |  Bài học: {session_title} (ID: {session_id})", font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_muted"]).pack(anchor="w", padx=20, pady=(0, 15))
+        ctk.CTkLabel(info_frame, text="Môn học: Trí Tuệ Nhân Tạo (Thực Hành)", font=(FONT_FAMILY, 16, "bold"), text_color=THEME_COLORS["text_title"]).pack(anchor="w", padx=20, pady=(15, 5))
+        ctk.CTkLabel(info_frame, text=f"Thời gian: {session_date} | Bài học: {session_title} (ID: {session_id})", font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_muted"]).pack(anchor="w", padx=20, pady=(0, 15))
 
         # Khung danh sách điểm danh
         list_card = CustomCard(detail_window)
         list_card.pack(fill="both", expand=True, padx=20, pady=(0, 20))
         
-        attendance_scroll = ctk.CTkScrollableFrame(list_card, fg_color=THEME_COLORS["bg_input"], corner_radius=8, label_text="MSSV            |  Họ và Tên                                   | Điểm danh | Trạng thái AI")
-        attendance_scroll._label.configure(font=(FONT_FAMILY, 12, "bold"), text_color=THEME_COLORS["text_muted"])
+        attendance_scroll = ctk.CTkScrollableFrame(list_card, fg_color=THEME_COLORS["bg_input"], corner_radius=8)
         attendance_scroll.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        self._build_table_header(
+            attendance_scroll,
+            [("MSSV", 95, 0), ("Họ và tên", 220, 1), ("Điểm danh", 100, 0), ("Trạng thái AI", 130, 0)]
+        )
 
         # Gọi Controller lấy dữ liệu điểm danh thật của buổi học này từ DB
         attendance_data = self.controller.get_session_attendance_details(session_id)
@@ -158,9 +210,13 @@ class OverviewScreen(ctk.CTkFrame):
                 ai_color = THEME_COLORS["text_muted"]
 
             row = ctk.CTkFrame(attendance_scroll, fg_color="transparent")
-            row.pack(fill="x", pady=6)
+            row.pack(fill="x", pady=6, padx=5)
+            row.grid_columnconfigure(0, minsize=95, weight=0)
+            row.grid_columnconfigure(1, minsize=220, weight=1)
+            row.grid_columnconfigure(2, minsize=100, weight=0)
+            row.grid_columnconfigure(3, minsize=130, weight=0)
 
-            ctk.CTkLabel(row, text=mssv, font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_main"], width=85, anchor="w").pack(side="left", padx=5)
-            ctk.CTkLabel(row, text=f"|  {name}", font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_main"], width=195, anchor="w").pack(side="left")
-            ctk.CTkLabel(row, text=f"|  {status}", font=(FONT_FAMILY, 13, "bold"), text_color=status_color, width=90, anchor="w").pack(side="left")
-            ctk.CTkLabel(row, text=f"|  {ai_state}", font=(FONT_FAMILY, 13, "bold"), text_color=ai_color).pack(side="left", padx=5)
+            ctk.CTkLabel(row, text=mssv, font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_main"], anchor="w").grid(row=0, column=0, sticky="ew", padx=(0, 10))
+            ctk.CTkLabel(row, text=name, font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_main"], anchor="w").grid(row=0, column=1, sticky="ew", padx=(0, 10))
+            ctk.CTkLabel(row, text=status, font=(FONT_FAMILY, 13, "bold"), text_color=status_color, anchor="w").grid(row=0, column=2, sticky="ew", padx=(0, 10))
+            ctk.CTkLabel(row, text=ai_state, font=(FONT_FAMILY, 13, "bold"), text_color=ai_color, anchor="w").grid(row=0, column=3, sticky="ew")

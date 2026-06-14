@@ -13,10 +13,9 @@ from core.face_engine import FaceRecognizer
 
 class VisionEngine:
     def __init__(self):
-        # 1. Khởi tạo cơ sở dữ liệu và nạp mô hình AI
+        # 1. Khởi tạo cơ sở dữ liệu (KHÔNG nạp model AI ở đây để tránh block UI)
         self.db = DatabaseHelper()
-        self.model_yolo = YOLO("yolo26n-pose.pt")
-        self.model_yolo.to("cuda")
+        self.model_yolo = None  # Lazy-load khi bắt đầu stream
         self.is_running = False
         self.session_attendance = {}
         self.known_students = []
@@ -29,6 +28,14 @@ class VisionEngine:
         self.pose_analyzer = PoseAnalyzer()
         
         self.load_known_embeddings()
+
+    def _ensure_model_loaded(self):
+        """Lazy-load model YOLO chỉ khi cần (tránh block tkinter main thread lúc startup)"""
+        if self.model_yolo is None:
+            print("[HỆ THỐNG] Đang nạp mô hình YOLO-Pose...")
+            self.model_yolo = YOLO("yolo26n-pose.pt")
+            self.model_yolo.to("cuda")
+            print("[HỆ THỐNG] Nạp mô hình YOLO-Pose thành công!")
 
     def load_known_embeddings(self):
         # 2. Tải danh sách vector khuôn mặt sinh viên từ DB lên RAM
@@ -96,11 +103,34 @@ class VisionEngine:
         # 4. Khởi chạy luồng xử lý video real-time và kiểm soát ghi nhận điểm danh
         self.is_running = True
         self.session_attendance = {}
-        cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        
+        # Thử mở camera: index 0 (mặc định) → index 1 → không dùng DSHOW
+        cap = None
+        for cam_index in [0, 1]:
+            cap = cv2.VideoCapture(cam_index, cv2.CAP_DSHOW)
+            if cap.isOpened():
+                log_callback(f"[HỆ THỐNG] Đã kết nối camera thành công (index={cam_index}, backend=DSHOW)")
+                break
+            cap.release()
+            # Thử lại không dùng DSHOW
+            cap = cv2.VideoCapture(cam_index)
+            if cap.isOpened():
+                log_callback(f"[HỆ THỐNG] Đã kết nối camera thành công (index={cam_index}, backend=AUTO)")
+                break
+            cap.release()
+            cap = None
+        
+        if cap is None or not cap.isOpened():
+            log_callback("[LỖI] Không thể mở camera! Kiểm tra kết nối phần cứng.")
+            self.is_running = False
+            return
         
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
+        # Lazy-load model YOLO trên luồng phụ (không block UI)
+        self._ensure_model_loaded()
+        
         log_callback("[HỆ THỐNG] Bắt đầu phiên điểm danh realtime...")
         start_time = time.time()
 
