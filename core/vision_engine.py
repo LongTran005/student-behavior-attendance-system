@@ -106,7 +106,7 @@ class VisionEngine:
         
         # Thử mở camera: index 0 (mặc định) → index 1 → không dùng DSHOW
         cap = None
-        for cam_index in [0, 1]:
+        for cam_index in [1, 0]:
             cap = cv2.VideoCapture(cam_index, cv2.CAP_DSHOW)
             if cap.isOpened():
                 log_callback(f"[HỆ THỐNG] Đã kết nối camera thành công (index={cam_index}, backend=DSHOW)")
@@ -125,8 +125,8 @@ class VisionEngine:
             self.is_running = False
             return
         
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
         # Lazy-load model YOLO trên luồng phụ (không block UI)
         self._ensure_model_loaded()
@@ -181,7 +181,7 @@ class VisionEngine:
                         # Nhánh gọi DeepFace độc lập hoàn toàn cho từng BB mới xuất hiện (Đưa Cooldown lên check trực tiếp)
                         elif track_id != -1 and track_id not in self.tracks_in_processing and not (track_id in self.track_cooldown and (time.time() - self.track_cooldown[track_id] < 2.0)):
                             # Trích xuất mảng keypoints từ YOLOv26-Pose để tính toán sải vai ảnh thẻ
-                            kp = result.keypoints.xy[0].cpu().numpy()
+                            kp = keypoints_data.xy[0].cpu().numpy()
                             x_left_shoulder = kp[5][0]
                             x_right_shoulder = kp[6][0]
                             h_f, w_f, _ = frame.shape
