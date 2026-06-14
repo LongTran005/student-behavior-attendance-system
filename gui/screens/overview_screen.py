@@ -1,8 +1,8 @@
 # gui/screens/overview_screen.py
 import customtkinter as ctk
+from tkinter import messagebox, filedialog
 from gui.theme import THEME_COLORS, FONT_FAMILY
 from gui.components.card import CustomCard
-# Import Controller vừa tạo
 from gui.controllers.overview_controller import OverviewController
 
 class OverviewScreen(ctk.CTkFrame):
@@ -75,12 +75,26 @@ class OverviewScreen(ctk.CTkFrame):
         row = ctk.CTkFrame(self.sv_scroll_frame, fg_color="transparent")
         row.pack(fill="x", pady=4, padx=5)
         row.grid_columnconfigure(0, minsize=90, weight=0)
-        row.grid_columnconfigure(1, minsize=190, weight=1)
-        row.grid_columnconfigure(2, minsize=90, weight=0)
+        row.grid_columnconfigure(1, minsize=160, weight=1)
+        row.grid_columnconfigure(2, minsize=80, weight=0)
+        row.grid_columnconfigure(3, minsize=120, weight=0)
 
         ctk.CTkLabel(row, text=str(student_id), font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_main"], anchor="w").grid(row=0, column=0, sticky="ew", padx=(0, 10))
         ctk.CTkLabel(row, text=str(name), font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_main"], anchor="w").grid(row=0, column=1, sticky="ew", padx=(0, 10))
-        ctk.CTkLabel(row, text=str(class_name), font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_muted"], anchor="w").grid(row=0, column=2, sticky="ew")
+        ctk.CTkLabel(row, text=str(class_name), font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_muted"], anchor="w").grid(row=0, column=2, sticky="ew", padx=(0, 10))
+
+        action_frame = ctk.CTkFrame(row, fg_color="transparent")
+        action_frame.grid(row=0, column=3, sticky="ew")
+        ctk.CTkButton(
+            action_frame, text="Sửa", width=50, height=28, font=(FONT_FAMILY, 11),
+            fg_color=THEME_COLORS["primary"], hover_color=THEME_COLORS["primary_hover"],
+            command=lambda sid=student_id: self.open_edit_student_dialog(sid)
+        ).pack(side="left", padx=(0, 5))
+        ctk.CTkButton(
+            action_frame, text="Xóa", width=50, height=28, font=(FONT_FAMILY, 11),
+            fg_color=THEME_COLORS["danger"], hover_color="#B91C1C",
+            command=lambda sid=student_id, sname=name: self.handle_delete_student(sid, sname)
+        ).pack(side="left")
 
     def _add_session_row(self, session_id, title, date, time_range):
         row = ctk.CTkFrame(
@@ -146,7 +160,7 @@ class OverviewScreen(ctk.CTkFrame):
         # 2. Tải dữ liệu danh sách Sinh viên
         self._build_table_header(
             self.sv_scroll_frame,
-            [("Mã SV", 90, 0), ("Họ và tên", 190, 1), ("Lớp", 90, 0)]
+            [("Mã SV", 90, 0), ("Họ và tên", 160, 1), ("Lớp", 80, 0), ("Hành động", 120, 0)]
         )
         students = self.controller.load_all_students()
         for mssv, name, class_name in students:
@@ -164,6 +178,134 @@ class OverviewScreen(ctk.CTkFrame):
     def refresh_and_load_data(self):
         self.load_data_from_db()
 
+    # ===================== XỬ LÝ XÓA SINH VIÊN =====================
+    def handle_delete_student(self, student_id, student_name):
+        """Xác nhận và xóa sinh viên khỏi hệ thống"""
+        confirm = messagebox.askyesno(
+            "Xác nhận xóa",
+            f"Bạn có chắc chắn muốn xóa sinh viên:\n\n"
+            f"MSSV: {student_id}\nHọ tên: {student_name}\n\n"
+            f"Toàn bộ dữ liệu điểm danh và trạng thái học tập\n"
+            f"liên quan sẽ bị xóa vĩnh viễn!"
+        )
+        if not confirm:
+            return
+
+        result = self.controller.handle_delete_student(student_id)
+        if result["status"] == "success":
+            messagebox.showinfo("Thành công", result["message"])
+            self.load_data_from_db()
+        else:
+            messagebox.showerror("Lỗi", result["message"])
+
+    # ===================== XỬ LÝ SỬA SINH VIÊN =====================
+    def open_edit_student_dialog(self, student_id):
+        """Mở cửa sổ chỉnh sửa thông tin sinh viên"""
+        student = self.controller.get_student_by_id(student_id)
+        if not student:
+            messagebox.showerror("Lỗi", f"Không tìm thấy sinh viên có MSSV: {student_id}")
+            return
+
+        dialog = ctk.CTkToplevel(self)
+        dialog.title(f"Chỉnh sửa: {student['full_name']}")
+        dialog.geometry("500x620")
+        dialog.configure(fg_color=THEME_COLORS["bg_main"])
+        dialog.attributes("-topmost", True)
+        dialog.grab_set()
+
+        card = CustomCard(dialog)
+        card.pack(fill="both", expand=True, padx=20, pady=20)
+
+        ctk.CTkLabel(
+            card, text=f"Chỉnh Sửa Sinh Viên: {student_id}",
+            font=(FONT_FAMILY, 20, "bold"), text_color=THEME_COLORS["text_title"]
+        ).pack(anchor="w", padx=25, pady=(20, 15))
+
+        form = ctk.CTkFrame(card, fg_color="transparent")
+        form.pack(fill="both", expand=True, padx=25)
+
+        entries = {}
+        fields = [
+            ("full_name", "Họ và Tên", student["full_name"]),
+            ("class_name", "Lớp", student["class_name"] or ""),
+            ("email", "Email", student["email"]),
+            ("phone", "Số Điện Thoại", student["phone"] or ""),
+        ]
+        for key, label, value in fields:
+            ctk.CTkLabel(form, text=label, font=(FONT_FAMILY, 12, "bold"),
+                         text_color=THEME_COLORS["text_muted"]).pack(anchor="w", pady=(8, 3))
+            entry = ctk.CTkEntry(
+                form, fg_color=THEME_COLORS["bg_input"], border_color=THEME_COLORS["border"],
+                text_color=THEME_COLORS["text_main"], height=42, font=(FONT_FAMILY, 14)
+            )
+            entry.pack(fill="x")
+            if value:
+                entry.insert(0, value)
+            entries[key] = entry
+
+        # Biến lưu đường dẫn ảnh mới
+        new_image_path = {"value": None}
+
+        img_frame = ctk.CTkFrame(form, fg_color="transparent")
+        img_frame.pack(fill="x", pady=(12, 0))
+        ctk.CTkLabel(img_frame, text="Ảnh chân dung (tùy chọn)", font=(FONT_FAMILY, 12, "bold"),
+                     text_color=THEME_COLORS["text_muted"]).pack(anchor="w", pady=(0, 3))
+
+        lbl_img_status = ctk.CTkLabel(img_frame, text="Giữ nguyên ảnh cũ",
+                                       font=(FONT_FAMILY, 12), text_color=THEME_COLORS["text_muted"])
+        lbl_img_status.pack(side="left", padx=(0, 10))
+
+        def browse_new_image():
+            path = filedialog.askopenfilename(
+                title="Chọn ảnh mới",
+                filetypes=[("Image Files", "*.jpg *.jpeg *.png *.bmp")]
+            )
+            if path:
+                import os
+                new_image_path["value"] = path
+                lbl_img_status.configure(text=os.path.basename(path), text_color=THEME_COLORS["success_text"])
+
+        ctk.CTkButton(
+            img_frame, text="Đổi ảnh", width=90, height=32, font=(FONT_FAMILY, 12),
+            fg_color=THEME_COLORS["bg_dark"], text_color=THEME_COLORS["text_main"],
+            hover_color=THEME_COLORS["bg_card_hover"], command=browse_new_image
+        ).pack(side="right")
+
+        # Nút hành động
+        btn_frame = ctk.CTkFrame(card, fg_color="transparent")
+        btn_frame.pack(fill="x", padx=25, pady=(15, 20))
+
+        def submit_edit():
+            result = self.controller.handle_update_student(
+                student_id=student_id,
+                full_name=entries["full_name"].get(),
+                class_name=entries["class_name"].get(),
+                email=entries["email"].get(),
+                phone=entries["phone"].get(),
+                new_image_path=new_image_path["value"],
+            )
+            if result["status"] == "success":
+                messagebox.showinfo("Thành công", result["message"], parent=dialog)
+                dialog.grab_release()
+                dialog.destroy()
+                self.load_data_from_db()
+            else:
+                messagebox.showerror("Lỗi", result["message"], parent=dialog)
+
+        ctk.CTkButton(
+            btn_frame, text="Hủy", width=100, height=42,
+            fg_color=THEME_COLORS["bg_dark"], text_color=THEME_COLORS["text_main"],
+            hover_color=THEME_COLORS["bg_card_hover"],
+            command=lambda: (dialog.grab_release(), dialog.destroy())
+        ).pack(side="right", padx=(8, 0))
+
+        ctk.CTkButton(
+            btn_frame, text="Lưu thay đổi", width=140, height=42,
+            font=(FONT_FAMILY, 14, "bold"),
+            fg_color=THEME_COLORS["primary"], hover_color=THEME_COLORS["primary_hover"],
+            command=submit_edit
+        ).pack(side="right")
+
     def show_session_details(self, session_id, session_title, session_date):
         """Mở cửa sổ hiển thị chi tiết điểm danh từ database dựa vào session_id"""
         detail_window = ctk.CTkToplevel(self)
@@ -171,6 +313,8 @@ class OverviewScreen(ctk.CTkFrame):
         detail_window.geometry("750x500")
         detail_window.configure(fg_color=THEME_COLORS["bg_main"])
         detail_window.attributes("-topmost", True)
+        detail_window.grab_set()  # Ngăn chặn click ra ngoài, tránh mở đè nhiều cửa sổ
+        detail_window.focus_set()
 
         # Khung thông tin buổi học
         info_frame = CustomCard(detail_window)

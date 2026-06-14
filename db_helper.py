@@ -110,3 +110,20 @@ class DatabaseHelper:
 
     def get_students_by_classroom(self, classroom_id):
         return self.students.get_students_by_classroom(classroom_id)
+
+    def get_student_by_id(self, student_id):
+        return self.students.get_student_by_id(student_id)
+
+    def update_student(self, student_id, full_name, class_name, email, phone, avatar_path=None, face_embedding=None):
+        return self.students.update_student(
+            student_id=student_id,
+            full_name=full_name,
+            class_name=class_name,
+            email=email,
+            phone=phone,
+            avatar_path=avatar_path,
+            face_embedding=face_embedding,
+        )
+
+    def delete_student(self, student_id):
+        return self.students.delete_student(student_id)
