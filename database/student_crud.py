@@ -85,6 +85,93 @@ class StudentRepository(BaseRepository):
         finally:
             conn.close()
 
+    def get_student_by_id(self, student_id):
+        """Lấy toàn bộ thông tin của một sinh viên theo MSSV"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """
+                SELECT s.student_id, s.full_name, s.classroom_id, c.class_name,
+                       s.email, s.phone, s.face_embedding, s.avatar_path
+                FROM Student s
+                LEFT JOIN Classroom c ON s.classroom_id = c.classroom_id
+                WHERE s.student_id = ?
+                """,
+                (student_id,),
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return {
+                "student_id": row["student_id"],
+                "full_name": row["full_name"],
+                "classroom_id": row["classroom_id"],
+                "class_name": row["class_name"],
+                "email": row["email"],
+                "phone": row["phone"],
+                "face_embedding": row["face_embedding"],
+                "avatar_path": row["avatar_path"],
+            }
+        finally:
+            conn.close()
+
+    def update_student(self, student_id, full_name, class_name, email, phone, avatar_path=None, face_embedding=None):
+        """Cập nhật thông tin sinh viên (bao gồm cả ảnh và embedding nếu có)"""
+        classroom_id = self.classroom_repo.get_or_create_classroom(class_name)
+
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            if avatar_path is not None and face_embedding is not None:
+                # Cập nhật đầy đủ kèm ảnh mới và embedding mới
+                cursor.execute(
+                    """
+                    UPDATE Student
+                    SET full_name = ?, classroom_id = ?, email = ?, phone = ?,
+                        avatar_path = ?, face_embedding = ?
+                    WHERE student_id = ?
+                    """,
+                    (full_name, classroom_id, email, phone, avatar_path, face_embedding, student_id),
+                )
+            else:
+                # Chỉ cập nhật thông tin cá nhân, giữ nguyên ảnh và embedding cũ
+                cursor.execute(
+                    """
+                    UPDATE Student
+                    SET full_name = ?, classroom_id = ?, email = ?, phone = ?
+                    WHERE student_id = ?
+                    """,
+                    (full_name, classroom_id, email, phone, student_id),
+                )
+            conn.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            print(f"[Error] Failed to update student: {e}")
+            return False
+        finally:
+            conn.close()
+
+    def delete_student(self, student_id):
+        """Xóa sinh viên và toàn bộ dữ liệu liên quan (attendance, learning_status)"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            # 1. Xóa bản ghi trạng thái học tập (LearningStatus) liên quan
+            cursor.execute("DELETE FROM LearningStatus WHERE student_id = ?", (student_id,))
+            # 2. Xóa bản ghi điểm danh (Attendance) liên quan
+            cursor.execute("DELETE FROM Attendance WHERE student_id = ?", (student_id,))
+            # 3. Xóa bản ghi sinh viên chính
+            cursor.execute("DELETE FROM Student WHERE student_id = ?", (student_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            print(f"[Error] Failed to delete student: {e}")
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
+
     def get_students_by_classroom(self, classroom_id):
         """Lấy danh sách sinh viên thuộc một lớp cụ thể"""
         conn = self.get_connection()
