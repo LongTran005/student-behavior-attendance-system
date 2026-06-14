@@ -1,4 +1,5 @@
 # gui/screens/overview_screen.py
+import csv
 import customtkinter as ctk
 from tkinter import messagebox, filedialog
 from gui.theme import THEME_COLORS, FONT_FAMILY
@@ -312,15 +313,54 @@ class OverviewScreen(ctk.CTkFrame):
         detail_window.title(f"Chi tiết: {session_title}")
         detail_window.geometry("750x500")
         detail_window.configure(fg_color=THEME_COLORS["bg_main"])
-        detail_window.attributes("-topmost", True)
+        detail_window.transient(self.winfo_toplevel())  # Chỉ đè lên cửa sổ chính của app
         detail_window.grab_set()  # Ngăn chặn click ra ngoài, tránh mở đè nhiều cửa sổ
         detail_window.focus_set()
 
         # Khung thông tin buổi học
         info_frame = CustomCard(detail_window)
         info_frame.pack(fill="x", padx=20, pady=15)
-        ctk.CTkLabel(info_frame, text="Môn học: Trí Tuệ Nhân Tạo (Thực Hành)", font=(FONT_FAMILY, 16, "bold"), text_color=THEME_COLORS["text_title"]).pack(anchor="w", padx=20, pady=(15, 5))
-        ctk.CTkLabel(info_frame, text=f"Thời gian: {session_date} | Bài học: {session_title} (ID: {session_id})", font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_muted"]).pack(anchor="w", padx=20, pady=(0, 15))
+        
+        info_header = ctk.CTkFrame(info_frame, fg_color="transparent")
+        info_header.pack(fill="x", padx=20, pady=(15, 5))
+        
+        ctk.CTkLabel(info_header, text=f"Bài học: {session_title}", font=(FONT_FAMILY, 16, "bold"), text_color=THEME_COLORS["text_title"]).pack(side="left")
+        
+        # Nút xuất CSV
+        def export_csv():
+            file_path = filedialog.asksaveasfilename(
+                title="Lưu báo cáo điểm danh",
+                defaultextension=".csv",
+                initialfile=f"DiemDanh_{session_id}_{session_date}.csv",
+                filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")]
+            )
+            if not file_path:
+                return
+            
+            try:
+                # Lấy dữ liệu mới nhất
+                data = self.controller.get_session_attendance_details(session_id)
+                with open(file_path, mode='w', newline='', encoding='utf-8-sig') as file:
+                    writer = csv.writer(file)
+                    # Ghi Header
+                    writer.writerow(["MSSV", "Họ và tên", "Điểm danh", "Trạng thái AI"])
+                    # Ghi dữ liệu
+                    for mssv, name, status, ai_state in data:
+                        status_text = status if status else "Vắng mặt"
+                        ai_state_text = ai_state if ai_state else "Không có dữ liệu"
+                        writer.writerow([mssv, name, status_text, ai_state_text])
+                
+                messagebox.showinfo("Thành công", f"Đã xuất báo cáo thành công tại:\n{file_path}", parent=detail_window)
+            except Exception as e:
+                messagebox.showerror("Lỗi", f"Không thể xuất báo cáo:\n{e}", parent=detail_window)
+
+        ctk.CTkButton(
+            info_header, text="Xuất CSV", width=90, height=30, font=(FONT_FAMILY, 12, "bold"),
+            fg_color=THEME_COLORS["primary"], hover_color=THEME_COLORS["primary_hover"],
+            command=export_csv
+        ).pack(side="right")
+
+        ctk.CTkLabel(info_frame, text=f"Thời gian: {session_date} | ID phiên học: {session_id}", font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_muted"]).pack(anchor="w", padx=20, pady=(0, 15))
 
         # Khung danh sách điểm danh
         list_card = CustomCard(detail_window)
