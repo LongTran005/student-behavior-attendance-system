@@ -9,13 +9,14 @@ from gui.theme import THEME_COLORS, FONT_FAMILY
 from gui.constants import TEXT_ICONS
 from core.vision_engine import VisionEngine
 from db_helper import DatabaseHelper
+from database.learning_status_crud import LearningStatusRepository
 
 class LectureScreen(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color="transparent")
         self.db = DatabaseHelper()
         self.engine = VisionEngine()
-        
+        self.learning_status_repo = LearningStatusRepository()
         self.session_id = None
         self.classroom_id = None
         self.lecture_name = ""
@@ -79,9 +80,12 @@ class LectureScreen(ctk.CTkFrame):
             text="[ Camera đang tắt - Chờ luồng đếm ngược chuẩn bị ]", 
             font=(FONT_FAMILY, 14), 
             fg_color=THEME_COLORS["bg_dark"],
-            corner_radius=8
+            corner_radius=8,
+            width=640,  # Ép kích thước mặc định chuẩn 16:9 (640x360)
+            height=360
         )
-        self.cam_view.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        # Sử dụng cờ expand=True nhưng không fill="both" để giữ nguyên khung tỷ lệ 16:9 khi co giãn cửa sổ
+        self.cam_view.pack(expand=True, padx=20, pady=(0, 20))
 
         # CỘT PHẢI: DANH SÁCH SINH VIÊN GHI DANH
         self.attendance_list_panel = ctk.CTkFrame(main_grid, fg_color=THEME_COLORS["bg_card"], corner_radius=12, border_width=1, border_color=THEME_COLORS["border"])
@@ -305,33 +309,71 @@ class LectureScreen(ctk.CTkFrame):
 
     def finish_lecture_session(self):
         """Kết thúc bài giảng an toàn, đóng camera và đồng bộ hóa trạng thái"""
-        if self.runtime_job:
-            self.after_cancel(self.runtime_job)
-            self.runtime_job = None
+        try:
+            # 1. Hủy lịch trình cập nhật thời gian thực ngay lập tức
+            if hasattr(self, 'runtime_job') and self.runtime_job:
+                self.after_cancel(self.runtime_job)
+                self.runtime_job = None
+                
+            # 2. Phát lệnh dừng luồng quét camera thời gian thực của AI
+            if hasattr(self, 'engine') and self.engine:
+                self.engine.stop_stream()
             
-        self.engine.stop_stream()
-        
-        if self.session_id:
-            self.db.update_lecture_session_status(self.session_id, "completed")
+            # 3. Cập nhật trạng thái buổi học sang 'completed' và kích hoạt tổng hợp hành vi
+            if hasattr(self, 'session_id') and self.session_id:
+                # Gọi hàm đổi trạng thái buổi học
+                self.db.update_lecture_session_status(self.session_id, "completed")
+                
+                # SỬA LỖI: Tạo đối tượng repository cục bộ tại đây để thực hiện chốt sổ bảng Attendance
+                # (Sử dụng trực tiếp file db_helper hoặc connection hiện tại của em)
+                from database.learning_status_crud import LearningStatusRepository
+                ls_repo = LearningStatusRepository()
+                
+                # SỬA LỖI: Truyền đúng biến self.session_id thay vì self.current_session_id
+                ls_repo.aggregate_session_behavior_simple(self.session_id)
             
-        self.status_label.configure(text="Bài giảng đã kết thúc hoàn tất", text_color=THEME_COLORS["text_muted"])
-        self._set_camera_text("[ Hệ thống Camera Tắt - Phiên Học Đã Kết Thúc ]")
-        
-        # Đánh dấu SV chưa được quét là "Vắng mặt"
-        for sid, bar_data in self.student_bars.items():
-            if sid in self.class_student_ids:
-                current_text = bar_data["lbl_behavior"].cget("text")
-                if "Đang chờ" in current_text:
-                    bar_data["lbl_behavior"].configure(text="Vắng mặt", text_color=THEME_COLORS["danger"])
-                    bar_data["lbl_status"].configure(text=f"MSSV: {sid} | Vắng mặt")
-        
-        # Reset các tham số, quay lại trạng thái chờ bài giảng tiếp theo
-        self.session_id = None
-        self.classroom_id = None
-        self.lecture_name = ""
-        self.lbl_welcome.configure(text="Chào mừng đến với bài giảng: (Đang chờ lịch trình)")
-        self.lbl_attendance_title.configure(text="DANH SÁCH SINH VIÊN TRONG LỚP")
-        self.polling_job = self.after(5000, self.start_listening_lobby_signal)
+            # 4. Cập nhật giao diện thông báo trạng thái
+            self.status_label.configure(text="Bài giảng đã kết thúc hoàn tất", text_color=THEME_COLORS["text_muted"])
+            
+            # 5. SỬA LỖI PYIMAGE: Dùng phương thức .after() của Tkinter để đẩy lệnh dọn cam 
+            # về đúng Luồng giao diện chính xử lý an toàn sau 50ms, tránh tranh chấp với AI thread
+            self.after(50, self._safe_clear_camera_view)
+            
+            # 6. Đánh dấu SV chưa được quét là "Vắng mặt" trên giao diện UI công khai
+            for sid, bar_data in self.student_bars.items():
+                if hasattr(self, 'class_student_ids') and sid in self.class_student_ids:
+                    current_text = bar_data["lbl_behavior"].cget("text")
+                    if "Đang chờ" in current_text:
+                        bar_data["lbl_behavior"].configure(text="Vắng mặt", text_color=THEME_COLORS["danger"])
+                        bar_data["lbl_status"].configure(text=f"MSSV: {sid} | Vắng mặt")
+            
+            # 7. Reset các tham số hệ thống, chuyển sang trạng thái chờ bài giảng tiếp theo
+            self.session_id = None
+            self.classroom_id = None
+            self.lecture_name = ""
+            self.lbl_welcome.configure(text="Chào mừng đến với bài giảng: (Đang chờ lịch trình)")
+            self.lbl_attendance_title.configure(text="DANH SÁCH SINH VIÊN TRONG LỚP")
+            
+            # Kích hoạt lại tiến trình lắng nghe tín hiệu sảnh chờ (Lobby Signal)
+            if hasattr(self, 'start_listening_lobby_signal'):
+                self.polling_job = self.after(5000, self.start_listening_lobby_signal)
+                
+        except Exception as e:
+            print(f"[X] Lỗi nghiêm trọng tại finish_lecture_session: {e}")
+
+    def _safe_clear_camera_view(self):
+        """Hàm dọn dẹp giao diện camera chạy an toàn tuyệt đối trên luồng UI chính."""
+        try:
+            # Thay vì gán text đè làm loạn PhotoImage, ta cấu hình gỡ ảnh ra khỏi Label hiển thị trước
+            # (Em kiểm tra xem widget hiển thị camera của em tên là gì, ví dụ camera_label hoặc video_label)
+            if hasattr(self, 'camera_label') and self.camera_label:
+                self.camera_label.config(image="")
+                self.camera_label.image = None
+                
+            # Sau đó mới đặt text thông báo kết thúc một cách sạch sẽ
+            self._set_camera_text("[ Hệ thống Camera Tắt - Phiên Học Đã Kết Thúc ]")
+        except Exception as e:
+            print(f"[X] Lỗi dọn dẹp widget camera: {e}")
 
     def update_camera_feed(self, cv_frame):
         """Nhận khung hình, giữ nguyên tỷ lệ HD 16:9 chuẩn từ camera phần cứng"""

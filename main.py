@@ -15,6 +15,21 @@ from gui.screens.classroom_management_screen import ClassroomManagementScreen
 from gui.screens.session_history_screen import SessionHistoryScreen
 
 class SmartClassroomApp(ctk.CTk):
+    try:
+        import tensorflow as tf
+        # Lấy danh sách tất cả các card đồ họa (GPU) có trên máy
+        physical_devices = tf.config.list_physical_devices('GPU')
+        
+        if physical_devices:
+            for device in physical_devices:
+                # Ép TensorFlow chỉ cấp phát VRAM tăng dần theo nhu cầu thực tế
+                tf.config.experimental.set_memory_growth(device, True)
+            print(f"[HỆ THỐNG] Đã kích hoạt Memory-Growth thành công cho {len(physical_devices)} GPU.")
+        else:
+            print("[HỆ THỐNG] Không tìm thấy GPU cho TensorFlow, chạy bằng CPU.")
+    except Exception as e:
+        print(f"[X] Lỗi cấu hình Memory-Growth cho TensorFlow: {e}")
+
     def __init__(self):
         super().__init__()
         self.current_user = None

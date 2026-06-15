@@ -21,7 +21,7 @@ class FaceRecognizer:
                 emb_objs = DeepFace.represent(
                     img_path=student_crop,
                     model_name="ArcFace",
-                    detector_backend="retinaface",
+                    detector_backend="opencv",
                     enforce_detection=True,
                     align=True,
                 )

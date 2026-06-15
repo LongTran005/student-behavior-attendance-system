@@ -16,7 +16,7 @@ tf-keras
 protobuf>=5.26.1,<6.0.0dev
 
 # --- ĐỒNG BỘ TOÁN MA TRẬN & RUNTIME (CHỐNG LỖI PYTHON 3.13) ---
-numpy>=1.24.0,<2.0.0
+numpy>=1.26.0
 opencv-python==4.13.0
 onnxruntime-gpu>=1.16.0
 typing-extensions>=4.8.0
@@ -27,3 +27,8 @@ tensorflow==2.20.0
 tf-keras==2.20.0
 protobuf>=5.26.1,<6.0.0dev
 bcrypt
+
+# --- PHÂN HỆ TỐI ƯU HÓA PHẦN CỨNG GPU (NVIDIA TENSORRT) ---
+onnx>=1.22.0
+onnxslim>=0.1.94
+tensorrt>=10.0.0,<11.0.0

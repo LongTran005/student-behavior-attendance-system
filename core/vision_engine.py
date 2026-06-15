@@ -1,4 +1,5 @@
 # core/vision_engine.py
+import os
 import cv2
 import json
 import time
@@ -30,12 +31,21 @@ class VisionEngine:
         self.load_known_embeddings()
 
     def _ensure_model_loaded(self):
-        """Lazy-load model YOLO chỉ khi cần (tránh block tkinter main thread lúc startup)"""
+        """Lazy-load và tự động biên dịch sang định dạng NVIDIA TensorRT (.engine) tĩnh"""
         if self.model_yolo is None:
-            print("[HỆ THỐNG] Đang nạp mô hình YOLO-Pose...")
-            self.model_yolo = YOLO("yolo26n-pose.pt")
-            self.model_yolo.to("cuda")
-            print("[HỆ THỐNG] Nạp mô hình YOLO-Pose thành công!")
+            pt_path = "yolo26n-pose.pt"
+            engine_path = "yolo26n-pose.engine"
+            
+            # Nếu chưa có file engine tĩnh, tiến hành biên dịch qua biến tạm để tránh lỗi cờ hiệu
+            if not os.path.exists(engine_path):
+                print("[HỆ THỐNG] Đang khởi tạo và biên dịch mô hình sang định dạng NVIDIA TensorRT tĩnh...")
+                tmp_model = YOLO(pt_path)
+                tmp_model.export(format="engine", device=0, imgsz=416)
+                print("[HỆ THỐNG] Biên dịch TensorRT (.engine) thành công!")
+                
+            print("[HỆ THỐNG] Đang nạp mô hình TensorRT Engine lên GPU...")
+            self.model_yolo = YOLO(engine_path)
+            print("[HỆ THỐNG] Nạp mô hình TensorRT Engine thành công!")
 
     def load_known_embeddings(self):
         # 2. Tải danh sách vector khuôn mặt sinh viên từ DB lên RAM
@@ -125,8 +135,8 @@ class VisionEngine:
             self.is_running = False
             return
         
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
         # Lazy-load model YOLO trên luồng phụ (không block UI)
         self._ensure_model_loaded()
@@ -141,8 +151,7 @@ class VisionEngine:
 
             elapsed_time = time.time() - start_time
             current_phase_status = "Có mặt" if elapsed_time <= 10.0 else "Đi trễ"
-            results = self.model_yolo.track(frame, persist=True, verbose=False)
-            
+            results = self.model_yolo.track(frame, persist=True, imgsz=416, verbose=False)
             for result in results:
                 if not result.boxes or not hasattr(result, 'keypoints') or result.keypoints is None:
                     continue

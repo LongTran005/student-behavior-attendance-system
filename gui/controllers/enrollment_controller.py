@@ -53,7 +53,7 @@ class EnrollmentController:
                 embedding_objs = DeepFace.represent(
                     img_path=source_img_path,
                     model_name="ArcFace",           # Đã đổi sang ArcFace đồng bộ hệ thống
-                    detector_backend="retinaface",  # Đổi sang retinaface để align chuẩn
+                    detector_backend="opencv",  # Đổi sang retinaface để align chuẩn
                     enforce_detection=True,         # BẮT BUỘC ĐỂ TRUE: Nếu không tìm thấy mặt sẽ ném ra lỗi lập tức
                     align=True                      # Xoay thẳng khuôn mặt hình học
                 )
