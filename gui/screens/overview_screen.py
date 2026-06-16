@@ -1,5 +1,4 @@
 # gui/screens/overview_screen.py
-import csv
 import math
 import customtkinter as ctk
 from tkinter import messagebox, filedialog
@@ -7,6 +6,7 @@ from gui.theme import THEME_COLORS, FONT_FAMILY
 from gui.components.card import CustomCard
 from gui.controllers.overview_controller import OverviewController
 from db_helper import DatabaseHelper
+from gui.excel_attendance_exporter import export_session_attendance_excel
 
 class OverviewScreen(ctk.CTkFrame):
     def __init__(self, parent, mode="teacher"):
@@ -430,38 +430,31 @@ class OverviewScreen(ctk.CTkFrame):
         
         ctk.CTkLabel(info_header, text=f"Bài học: {session_title}", font=(FONT_FAMILY, 16, "bold"), text_color=THEME_COLORS["text_title"]).pack(side="left")
         
-        # Nút xuất CSV
-        def export_csv():
+        # Nút xuất Excel
+        def export_excel():
             file_path = filedialog.asksaveasfilename(
                 title="Lưu báo cáo điểm danh",
-                defaultextension=".csv",
-                initialfile=f"DiemDanh_{session_id}_{session_date}.csv",
-                filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")]
+                defaultextension=".xlsx",
+                initialfile=f"DiemDanh_{session_id}_{session_date}.xlsx",
+                filetypes=[("Excel Files", "*.xlsx"), ("All Files", "*.*")]
             )
             if not file_path:
                 return
             
             try:
-                # Lấy dữ liệu mới nhất
-                data = self.controller.get_session_attendance_details(session_id)
-                with open(file_path, mode='w', newline='', encoding='utf-8-sig') as file:
-                    writer = csv.writer(file)
-                    # Ghi Header
-                    writer.writerow(["MSSV", "Họ và tên", "Điểm danh", "Trạng thái AI"])
-                    # Ghi dữ liệu
-                    for mssv, name, status, ai_state in data:
-                        status_text = status if status else "Vắng mặt"
-                        ai_state_text = ai_state if ai_state else "Không có dữ liệu"
-                        writer.writerow([mssv, name, status_text, ai_state_text])
+                export_data = self.controller.db.get_session_export_data(session_id)
+                if not export_data:
+                    raise ValueError("Không tìm thấy dữ liệu buổi học để xuất Excel.")
+                export_session_attendance_excel(file_path, export_data)
                 
                 messagebox.showinfo("Thành công", f"Đã xuất báo cáo thành công tại:\n{file_path}", parent=detail_window)
             except Exception as e:
                 messagebox.showerror("Lỗi", f"Không thể xuất báo cáo:\n{e}", parent=detail_window)
 
         ctk.CTkButton(
-            info_header, text="Xuất CSV", width=90, height=30, font=(FONT_FAMILY, 12, "bold"),
+            info_header, text="Xuất Excel", width=100, height=30, font=(FONT_FAMILY, 12, "bold"),
             fg_color=THEME_COLORS["primary"], hover_color=THEME_COLORS["primary_hover"],
-            command=export_csv
+            command=export_excel
         ).pack(side="right")
 
         ctk.CTkLabel(info_frame, text=f"Thời gian: {session_date} | ID phiên học: {session_id}", font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_muted"]).pack(anchor="w", padx=20, pady=(0, 15))

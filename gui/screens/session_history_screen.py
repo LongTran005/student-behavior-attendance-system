@@ -1,12 +1,15 @@
 # gui/screens/session_history_screen.py
 
-import csv
 import customtkinter as ctk
 from tkinter import messagebox, filedialog
 
 from gui.components.card import CustomCard
 from gui.theme import FONT_FAMILY, THEME_COLORS
 from db_helper import DatabaseHelper
+from gui.excel_attendance_exporter import (
+    export_all_sessions_attendance_excel,
+    export_session_attendance_excel,
+)
 
 
 class SessionHistoryScreen(ctk.CTkFrame):
@@ -59,9 +62,9 @@ class SessionHistoryScreen(ctk.CTkFrame):
         toolbar.pack(fill="x", padx=20, pady=(18, 12))
 
         ctk.CTkButton(
-            toolbar, text="Xuất Tất Cả (CSV)", width=150, height=38,
+            toolbar, text="Xuất Tất Cả (Excel)", width=170, height=38,
             fg_color=THEME_COLORS["success_text"], hover_color=THEME_COLORS["success_text"],
-            font=(FONT_FAMILY, 13, "bold"), command=self._export_all_csv,
+            font=(FONT_FAMILY, 13, "bold"), command=self._export_all_excel,
         ).pack(side="right")
 
         ctk.CTkButton(
@@ -165,30 +168,29 @@ class SessionHistoryScreen(ctk.CTkFrame):
         ctk.CTkLabel(info_header, text=f"Bài học: {title}", font=(FONT_FAMILY, 16, "bold"),
                      text_color=THEME_COLORS["text_title"]).pack(side="left")
 
-        # Nút xuất CSV
+        # Nút xuất Excel
         attendance_data = self.db.get_session_attendance_details(sid)
 
-        def export_csv():
+        def export_excel():
             file_path = filedialog.asksaveasfilename(
-                title="Lưu báo cáo điểm danh", defaultextension=".csv",
-                initialfile=f"DiemDanh_{sid}_{date}.csv",
-                filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")]
+                title="Lưu báo cáo điểm danh", defaultextension=".xlsx",
+                initialfile=f"DiemDanh_{sid}_{date}.xlsx",
+                filetypes=[("Excel Files", "*.xlsx"), ("All Files", "*.*")]
             )
             if not file_path:
                 return
             try:
-                with open(file_path, mode='w', newline='', encoding='utf-8-sig') as f:
-                    writer = csv.writer(f)
-                    writer.writerow(["MSSV", "Họ và tên", "Điểm danh", "Trạng thái AI"])
-                    for mssv, name, status, ai_state in attendance_data:
-                        writer.writerow([mssv, name, status or "Vắng mặt", ai_state or "Không có dữ liệu"])
+                export_data = self.db.get_session_export_data(sid)
+                if not export_data:
+                    raise ValueError("Không tìm thấy dữ liệu buổi học để xuất Excel.")
+                export_session_attendance_excel(file_path, export_data)
                 messagebox.showinfo("Thành công", f"Đã xuất báo cáo tại:\n{file_path}", parent=detail_window)
             except Exception as e:
                 messagebox.showerror("Lỗi", f"Không thể xuất:\n{e}", parent=detail_window)
 
-        ctk.CTkButton(info_header, text="Xuất CSV", width=90, height=30, font=(FONT_FAMILY, 12, "bold"),
+        ctk.CTkButton(info_header, text="Xuất Excel", width=100, height=30, font=(FONT_FAMILY, 12, "bold"),
                       fg_color=THEME_COLORS["primary"], hover_color=THEME_COLORS["primary_hover"],
-                      command=export_csv).pack(side="right")
+                      command=export_excel).pack(side="right")
 
         ctk.CTkLabel(info_frame, text=f"Thời gian: {date} | ID phiên học: {sid}",
                      font=(FONT_FAMILY, 13), text_color=THEME_COLORS["text_muted"]).pack(anchor="w", padx=20, pady=(0, 15))
@@ -234,8 +236,8 @@ class SessionHistoryScreen(ctk.CTkFrame):
             ctk.CTkLabel(r, text=status, font=(FONT_FAMILY, 13, "bold"), text_color=status_color, anchor="w").grid(row=0, column=2, sticky="ew", padx=(0, 10))
             ctk.CTkLabel(r, text=ai_state, font=(FONT_FAMILY, 13, "bold"), text_color=ai_color, anchor="w").grid(row=0, column=3, sticky="ew")
 
-    def _export_all_csv(self):
-        """Xuất toàn bộ dữ liệu điểm danh tất cả buổi học ra 1 file CSV"""
+    def _export_all_excel(self):
+        """Xuất toàn bộ dữ liệu điểm danh tất cả buổi học ra 1 file Excel"""
         sessions = self.db.get_all_sessions()
         if not sessions:
             messagebox.showinfo("Thông báo", "Chưa có dữ liệu buổi học nào để xuất.")
@@ -243,28 +245,22 @@ class SessionHistoryScreen(ctk.CTkFrame):
 
         file_path = filedialog.asksaveasfilename(
             title="Xuất toàn bộ dữ liệu điểm danh",
-            defaultextension=".csv",
-            initialfile="BaoCao_TatCaBuoiHoc.csv",
-            filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")]
+            defaultextension=".xlsx",
+            initialfile="BaoCao_TatCaBuoiHoc.xlsx",
+            filetypes=[("Excel Files", "*.xlsx"), ("All Files", "*.*")]
         )
         if not file_path:
             return
 
         try:
-            with open(file_path, mode='w', newline='', encoding='utf-8-sig') as f:
-                writer = csv.writer(f)
-                writer.writerow(["ID Buổi học", "Tên buổi học", "Ngày", "MSSV", "Họ và tên", "Điểm danh", "Trạng thái AI"])
-
-                for s in sessions:
-                    sid = s["session_id"]
-                    name = s.get("course_name", "")
-                    date = s.get("lecture_date", "")
-                    attendance = self.db.get_session_attendance_details(sid)
-                    for mssv, sname, status, ai_state in attendance:
-                        writer.writerow([
-                            sid, name, date, mssv, sname,
-                            status or "Vắng mặt", ai_state or "Không có dữ liệu"
-                        ])
+            export_items = []
+            for session in sessions:
+                export_data = self.db.get_session_export_data(session["session_id"])
+                if export_data:
+                    export_items.append(export_data)
+            if not export_items:
+                raise ValueError("Không tìm thấy dữ liệu buổi học để xuất Excel.")
+            export_all_sessions_attendance_excel(file_path, export_items)
 
             messagebox.showinfo("Thành công", f"Đã xuất toàn bộ báo cáo tại:\n{file_path}")
         except Exception as e:

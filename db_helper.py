@@ -108,6 +108,9 @@ class DatabaseHelper:
     def get_session_attendance_details(self, session_id):
         return self.attendance.get_session_attendance_details(session_id)
 
+    def get_session_export_data(self, session_id):
+        return self.attendance.get_session_export_data(session_id)
+
     def get_students_by_classroom(self, classroom_id):
         return self.students.get_students_by_classroom(classroom_id)
 
